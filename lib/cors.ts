@@ -1,104 +1,73 @@
-/**
- * Gestion CORS sécurisée
- * Vérifie les origines autorisées et gère les requêtes preflight
- */
+// lib/cors.ts - CORS sécurisé avec origines autorisées
+type HeadersMap = Record<string, string>;
 
-// Origines autorisées (configurables via variable d'environnement)
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGIN 
-  ? process.env.ALLOWED_ORIGIN.split(',').map(origin => origin.trim())
-  : [
-      'https://ankilang.netlify.app', 
-      'https://ankilang.com',
-      'http://localhost:5173',  // Développement local
-      'http://localhost:3000',  // Autre port de développement
-      'http://localhost:8080'   // Port alternatif
-    ];
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://ankilang.appwrite.network',
+  'https://ankilang.pages.dev',
+  'https://ankilang.com',
+  'https://ankilang.netlify.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:8888'
+];
 
-// Headers CORS par défaut
-const CORS_HEADERS = {
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-  'Access-Control-Max-Age': '86400' // 24 heures
-};
-
-/**
- * Vérifie si une origine est autorisée
- */
-function isOriginAllowed(origin: string): boolean {
-  // En développement, autoriser localhost sur tous les ports
-  if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:')) {
-    return true;
-  }
-  
-  return ALLOWED_ORIGINS.includes(origin);
+function normalizeOrigin(origin?: string): string {
+  return origin?.trim() ?? '';
 }
 
-/**
- * Gère les requêtes CORS
- * @param event - L'événement de la requête
- * @returns Réponse CORS si nécessaire, null sinon
- */
-export function handleCORS(event: any): any | null {
-  const origin = event.headers.Origin || event.headers.origin;
-  
-  // Si pas d'origine, on autorise (requêtes server-to-server)
-  if (!origin) {
-    return null;
-  }
+export function getAllowedOrigins(): string[] {
+  const envOrigins = process.env.ALLOWED_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) ?? [];
+  const set = new Set<string>([...envOrigins, ...DEFAULT_ALLOWED_ORIGINS]);
+  return Array.from(set);
+}
 
-  // Vérification de l'origine
-  if (!isOriginAllowed(origin)) {
-    return {
-      statusCode: 403,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': origin, // Retourner l'origine demandée
-        'Access-Control-Allow-Credentials': 'true',
-        ...CORS_HEADERS
-      },
-      body: JSON.stringify({
-        type: 'https://ankilang.com/errors/forbidden',
-        title: 'Forbidden',
-        detail: 'Origin not allowed',
-        traceId: event.traceId || 'unknown'
-      })
-    };
-  }
+export function corsHeaders(origin?: string, extra: HeadersMap = {}): HeadersMap {
+  const allowedOrigins = getAllowedOrigins();
+  const normalizedOrigin = normalizeOrigin(origin);
+  const isAllowed = normalizedOrigin && allowedOrigins.includes(normalizedOrigin);
+  const value = isAllowed ? normalizedOrigin : allowedOrigins[0] ?? '*';
 
-  // Gestion des requêtes preflight OPTIONS
+  return {
+    'Access-Control-Allow-Origin': value,
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Trace-Id',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'X-XSS-Protection': '1; mode=block',
+    'Vary': 'Origin',
+    ...extra
+  };
+}
+
+export function handleCORS(event: { httpMethod: string; headers: Record<string, string | undefined> }) {
+  const origin = event.headers?.origin || event.headers?.Origin;
+  const allowedOrigins = getAllowedOrigins();
+  const headers = corsHeaders(origin);
+
   if (event.httpMethod === 'OPTIONS') {
+    if (origin && !allowedOrigins.includes(origin)) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ error: 'Origin not allowed' })
+      };
+    }
+
     return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Credentials': 'true',
-        ...CORS_HEADERS
-      },
+      statusCode: 204,
+      headers,
       body: ''
     };
   }
 
-  // Pour les autres requêtes, on ajoute les headers CORS
-  return null;
-}
-
-/**
- * Ajoute les headers CORS à une réponse
- */
-export function addCORSHeaders(headers: Record<string, string>, origin?: string): Record<string, string> {
-  if (origin && isOriginAllowed(origin)) {
+  if (origin && !allowedOrigins.includes(origin)) {
     return {
-      ...headers,
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Credentials': 'true',
-      ...CORS_HEADERS
+      statusCode: 403,
+      headers,
+      body: JSON.stringify({ error: 'Origin not allowed' })
     };
   }
-  
-  // Si pas d'origine spécifiée, ajouter les headers CORS de base
-  return {
-    ...headers,
-    'Access-Control-Allow-Origin': '*',
-    ...CORS_HEADERS
-  };
+
+  return null; // Pas de problème CORS
 }

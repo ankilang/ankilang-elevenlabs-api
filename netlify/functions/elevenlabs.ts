@@ -4,7 +4,7 @@
  */
 
 import { withAuth, AuthenticatedEvent } from '../../lib/auth';
-import { handleCORS, addCORSHeaders } from '../../lib/cors';
+import { handleCORS, corsHeaders } from '../../lib/cors';
 import { rateLimit } from '../../lib/rate-limit';
 import { problem } from '../../lib/problem';
 import { logInfo, logError, logUsage, logWarn } from '../../lib/logging';
@@ -31,12 +31,6 @@ const storageClient = new Client()
 
 const storage = new Storage(storageClient);
 
-/**
- * Génère un ID de trace unique
- */
-function generateTraceId(): string {
-  return `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
 
 // Schéma de validation Zod pour les paramètres ElevenLabs
 const ElevenLabsSchema = z.object({
@@ -55,37 +49,26 @@ const ElevenLabsSchema = z.object({
 /**
  * Fonction principale ElevenLabs
  */
-export const handler = async (event: any) => {
-  // Gestion CORS - traiter les requêtes OPTIONS AVANT l'authentification
+export const handler = withAuth(async (event: AuthenticatedEvent) => {
+  const { traceId, userId } = event;
+  
+  // Gestion CORS
   const corsResult = handleCORS(event);
   if (corsResult) {
     return corsResult;
   }
-
-  // Mode test : désactiver temporairement l'authentification JWT
-  const TEST_MODE = process.env.TEST_MODE === 'true';
-  
-  if (!TEST_MODE) {
-    // Mode production : utiliser l'authentification JWT
-    return withAuth(async (event: AuthenticatedEvent) => {
-      return await handleElevenLabsRequest(event);
-    })(event);
-  }
-  
-  // Mode test : traiter la requête sans authentification
-  return await handleElevenLabsRequest(event);
-};
-
-async function handleElevenLabsRequest(event: any) {
-  // Générer un traceId et userId pour le mode test
-  const traceId = event.traceId || generateTraceId();
-  const userId = event.userId || 'test-user';
 
   // Vérification de la méthode HTTP
   if (event.httpMethod !== 'POST') {
     logError(traceId, 'elevenlabs', 'invalid_method', `Invalid HTTP method: ${event.httpMethod}`, { method: event.httpMethod }, userId);
     return problem(405, 'Use POST', traceId);
   }
+
+  return await handleElevenLabsRequest(event);
+});
+
+async function handleElevenLabsRequest(event: AuthenticatedEvent) {
+  const { traceId, userId } = event;
 
   try {
     // Rate limiting
@@ -203,14 +186,12 @@ async function handleElevenLabsRequest(event: any) {
 
       // Headers CORS
       const origin = event.headers.Origin || event.headers.origin;
-      const headers = addCORSHeaders({
-        'Content-Type': contentType,
-        'Content-Disposition': 'inline; filename="elevenlabs-tts.mp3"',
-        'Cache-Control': 'no-store',
+      const headers = corsHeaders(origin, {
+        'Content-Type': 'application/json',
         'X-Trace-Id': traceId,
         'X-Rate-Limit-Remaining': rateLimitResult.remaining.toString(),
         'X-Rate-Limit-Reset': rateLimitResult.resetTime.toString()
-      }, origin);
+      });
 
       // Réponse avec option de stockage
       const responseBody = {
@@ -223,10 +204,7 @@ async function handleElevenLabsRequest(event: any) {
 
       return {
         statusCode: 200,
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(responseBody)
       };
 

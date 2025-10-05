@@ -61,6 +61,10 @@ APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 APPWRITE_PROJECT_ID=your_project_id
 APPWRITE_SELF_SIGNED=false
 
+# Appwrite Storage (pour sauvegarder les fichiers audio)
+APPWRITE_API_KEY=your_appwrite_api_key_here
+APPWRITE_BUCKET_ID=your_bucket_id_here
+
 # CORS (optionnel)
 ALLOWED_ORIGIN=https://ankilang.netlify.app,https://ankilang.com
 ```

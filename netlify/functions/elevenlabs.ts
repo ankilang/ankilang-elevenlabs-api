@@ -56,6 +56,12 @@ const ElevenLabsSchema = z.object({
  * Fonction principale ElevenLabs
  */
 export const handler = async (event: any) => {
+  // Gestion CORS - traiter les requêtes OPTIONS AVANT l'authentification
+  const corsResult = handleCORS(event);
+  if (corsResult) {
+    return corsResult;
+  }
+
   // Mode test : désactiver temporairement l'authentification JWT
   const TEST_MODE = process.env.TEST_MODE === 'true';
   
@@ -74,12 +80,6 @@ async function handleElevenLabsRequest(event: any) {
   // Générer un traceId et userId pour le mode test
   const traceId = event.traceId || generateTraceId();
   const userId = event.userId || 'test-user';
-  
-  // Gestion CORS
-  const corsResult = handleCORS(event);
-  if (corsResult) {
-    return corsResult;
-  }
 
   // Vérification de la méthode HTTP
   if (event.httpMethod !== 'POST') {

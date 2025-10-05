@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  functions = "dist/netlify/functions"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/.netlify/functions/elevenlabs"
+  to = "/.netlify/functions/elevenlabs"
+  status = 200

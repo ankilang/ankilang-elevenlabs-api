@@ -25,6 +25,11 @@ const CORS_HEADERS = {
  * Vérifie si une origine est autorisée
  */
 function isOriginAllowed(origin: string): boolean {
+  // En développement, autoriser localhost sur tous les ports
+  if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:')) {
+    return true;
+  }
+  
   return ALLOWED_ORIGINS.includes(origin);
 }
 
@@ -47,7 +52,9 @@ export function handleCORS(event: any): any | null {
       statusCode: 403,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'null'
+        'Access-Control-Allow-Origin': origin, // Retourner l'origine demandée
+        'Access-Control-Allow-Credentials': 'true',
+        ...CORS_HEADERS
       },
       body: JSON.stringify({
         type: 'https://ankilang.com/errors/forbidden',
@@ -88,5 +95,10 @@ export function addCORSHeaders(headers: Record<string, string>, origin?: string)
     };
   }
   
-  return headers;
+  // Si pas d'origine spécifiée, ajouter les headers CORS de base
+  return {
+    ...headers,
+    'Access-Control-Allow-Origin': '*',
+    ...CORS_HEADERS
+  };
 }

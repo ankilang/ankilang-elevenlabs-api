@@ -6,7 +6,13 @@
 // Origines autorisées (configurables via variable d'environnement)
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGIN 
   ? process.env.ALLOWED_ORIGIN.split(',').map(origin => origin.trim())
-  : ['https://ankilang.netlify.app', 'https://ankilang.com'];
+  : [
+      'https://ankilang.netlify.app', 
+      'https://ankilang.com',
+      'http://localhost:5173',  // Développement local
+      'http://localhost:3000',  // Autre port de développement
+      'http://localhost:8080'   // Port alternatif
+    ];
 
 // Headers CORS par défaut
 const CORS_HEADERS = {

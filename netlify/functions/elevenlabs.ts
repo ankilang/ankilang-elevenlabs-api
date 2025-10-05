@@ -35,7 +35,7 @@ const storage = new Storage(storageClient);
 const ElevenLabsSchema = z.object({
   text: z.string().min(1, 'Text is required').max(5000, 'Text too long (max 5000 characters)'),
   voice_id: z.string().min(1, 'Voice ID is required'),
-  model_id: z.string().optional().default("eleven_monolingual_v1"),
+  model_id: z.string().optional().default("eleven_turbo_v2_5"),
   language_code: z.string().optional(), // Code langue pour Turbo v2.5 (expérimental)
   voice_settings: z.object({
     stability: z.number().min(0).max(1).optional().default(0.5),

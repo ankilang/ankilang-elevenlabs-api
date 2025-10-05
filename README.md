@@ -4,9 +4,11 @@ API sécurisée pour la synthèse vocale ElevenLabs, intégrée dans l'écosyst�
 
 ## 🚀 Fonctionnalités
 
-- **Text-to-Speech** avec les modèles ElevenLabs
+- **Text-to-Speech** avec ElevenLabs Turbo v2.5 (ultra-rapide, économique)
+- **32 langues** supportées avec détection automatique
 - **Authentification JWT** via Appwrite
 - **Rate limiting** par utilisateur (30 req/heure)
+- **Stockage Appwrite** optionnel pour les fichiers audio
 - **CORS sécurisé** avec origines autorisées
 - **Logs structurés** avec traceId
 - **Gestion d'erreurs RFC 7807**
@@ -112,13 +114,14 @@ Content-Type: application/json
 {
   "text": "Hello, this is a test of ElevenLabs text-to-speech.",
   "voice_id": "21m00Tcm4TlvDq8ikWAM",
-  "model_id": "eleven_monolingual_v1",
+  "model_id": "eleven_turbo_v2_5",
   "language_code": "en",
   "voice_settings": {
     "stability": 0.5,
-    "similarity_boost": 0.5
+    "similarity_boost": 0.75
   },
-  "output_format": "mp3_44100_128"
+  "output_format": "mp3_44100_128",
+  "save_to_storage": false
 }
 ```
 

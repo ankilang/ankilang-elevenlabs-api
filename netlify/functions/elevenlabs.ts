@@ -160,7 +160,7 @@ export const handler = withAuth(async (event: AuthenticatedEvent) => {
       throw fetchError;
     }
 
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof z.ZodError) {
       logError(traceId, 'elevenlabs', 'validation_error', 'Invalid request parameters', { 
         errors: err.errors 

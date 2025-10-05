@@ -6,7 +6,4 @@
 [build.environment]
   NODE_VERSION = "18"
 
-[[redirects]]
-  from = "/.netlify/functions/elevenlabs"
-  to = "/.netlify/functions/elevenlabs"
-  status = 200
+# Pas de redirects nécessaires pour les fonctions Netlify

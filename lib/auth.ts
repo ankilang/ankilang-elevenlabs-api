@@ -1,4 +1,4 @@
-import { Client, JWT } from 'node-appwrite';
+import { Client, Account } from 'node-appwrite';
 import { z } from 'zod';
 
 // Schéma de validation pour l'authentification
@@ -62,8 +62,8 @@ export function withAuth(handler: (event: AuthenticatedEvent) => Promise<any>) {
       const { jwt } = AuthSchema.parse({ jwt: token });
 
       // Vérification du JWT avec Appwrite
-      const jwtObj = new JWT(client);
-      const session = await jwtObj.verify(jwt);
+      const account = new Account(client);
+      const session = await account.getSession(jwt);
       
       if (!session || !session.userId) {
         return {
@@ -87,7 +87,7 @@ export function withAuth(handler: (event: AuthenticatedEvent) => Promise<any>) {
 
       return await handler(authenticatedEvent);
 
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return {
           statusCode: 400,

@@ -69,6 +69,9 @@ APPWRITE_BUCKET_ID=your_bucket_id_here
 
 # CORS (optionnel)
 ALLOWED_ORIGIN=https://ankilang.netlify.app,https://ankilang.com
+
+# Mode test (désactiver l'authentification JWT)
+TEST_MODE=true
 ```
 
 ### Configuration Netlify
@@ -91,6 +94,26 @@ npm run build
 
 # Déploiement en production
 netlify deploy --prod
+```
+
+## 🧪 Mode Test (sans authentification JWT)
+
+Pour tester l'API sans JWT, ajoutez la variable d'environnement :
+```bash
+TEST_MODE=true
+```
+
+### Test basique (mode test)
+
+```bash
+# Test SANS authentification (mode test)
+curl -X POST https://ankilangelevenlabs.netlify.app/.netlify/functions/elevenlabs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Bonjour, ceci est un test de synthèse vocale.",
+    "voice_id": "21m00Tcm4TlvDq8ikWAM"
+  }' \
+  --output test_audio.mp3
 ```
 
 ## 📖 Utilisation

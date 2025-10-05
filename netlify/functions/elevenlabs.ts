@@ -49,7 +49,7 @@ const ElevenLabsSchema = z.object({
 /**
  * Fonction principale ElevenLabs
  */
-export const handler = withAuth(async (event: AuthenticatedEvent) => {
+const authenticatedHandler = withAuth(async (event: AuthenticatedEvent) => {
   const { traceId, userId } = event;
   
   // Gestion CORS
@@ -66,6 +66,15 @@ export const handler = withAuth(async (event: AuthenticatedEvent) => {
 
   return await handleElevenLabsRequest(event);
 });
+
+export const handler = async (event: any) => {
+  const corsResult = handleCORS(event);
+  if (corsResult) {
+    return corsResult;
+  }
+
+  return authenticatedHandler(event);
+};
 
 async function handleElevenLabsRequest(event: AuthenticatedEvent) {
   const { traceId, userId } = event;

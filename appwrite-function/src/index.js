@@ -22,7 +22,15 @@ module.exports = async (req, res) => {
     }
 
     // 2. Récupérer les données du corps de la requête
-    const { text, voice_id, model_id, language_code, voice_settings } = req.body;
+    // Dans Appwrite, les données sont dans req.body directement
+    let requestData;
+    try {
+      requestData = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    } catch (parseError) {
+      return res.json({ error: 'Format JSON invalide dans le corps de la requête.' }, 400);
+    }
+
+    const { text, voice_id, model_id, language_code, voice_settings } = requestData;
 
     // 3. Validation des paramètres requis
     if (!text || !voice_id) {

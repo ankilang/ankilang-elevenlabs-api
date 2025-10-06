@@ -16,127 +16,124 @@ const ENDPOINT = 'https://api.elevenlabs.io/v1/text-to-speech';
  */
 module.exports = async (req, res) => {
   try {
+    console.log('🚀 Fonction ElevenLabs démarrée');
+    console.log('📥 Méthode:', req.method);
+    console.log('📦 Body:', typeof req.body, req.body);
+
     // 1. Vérifier la méthode de la requête
     if (req.method !== 'POST') {
-      return res.json({ error: 'Veuillez utiliser une requête POST.' }, 405);
+      console.log('❌ Méthode non autorisée:', req.method);
+      return res.send('Veuillez utiliser une requête POST.', 405);
     }
 
     // 2. Récupérer les données du corps de la requête
-    // Dans Appwrite, les données sont dans req.body directement
     let requestData;
     try {
-      requestData = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      if (typeof req.body === 'string') {
+        requestData = JSON.parse(req.body);
+      } else if (req.body && typeof req.body === 'object') {
+        requestData = req.body;
+      } else {
+        throw new Error('Body de requête invalide');
+      }
     } catch (parseError) {
-      return res.json({ error: 'Format JSON invalide dans le corps de la requête.' }, 400);
+      console.log('❌ Erreur de parsing JSON:', parseError.message);
+      return res.send('Format JSON invalide dans le corps de la requête.', 400);
     }
+
+    console.log('📋 Données parsées:', requestData);
 
     const { text, voice_id, model_id, language_code, voice_settings } = requestData;
 
     // 3. Validation des paramètres requis
     if (!text || !voice_id) {
-      return res.json({ 
-        error: 'Le texte et l\'ID de la voix sont requis.',
-        required: ['text', 'voice_id']
-      }, 400);
+      console.log('❌ Paramètres manquants:', { text: !!text, voice_id: !!voice_id });
+      return res.send('Le texte et l\'ID de la voix sont requis.', 400);
     }
 
     // 4. Vérifier la clé API
     if (!ELEVENLABS_API_KEY) {
-      return res.json({ 
-        error: 'La clé API ElevenLabs n\'est pas configurée côté serveur.' 
-      }, 500);
+      console.log('❌ Clé API ElevenLabs manquante');
+      return res.send('La clé API n\'est pas configurée côté serveur.', 500);
     }
 
-    // 5. Validation de la longueur du texte
-    if (text.length > 5000) {
-      return res.json({ 
-        error: 'Le texte est trop long (maximum 5000 caractères).' 
-      }, 400);
-    }
+    console.log('✅ Validation réussie, appel ElevenLabs...');
 
-    // 6. Préparation de la requête ElevenLabs
-    const requestBody = {
+    // 5. Configuration de la requête ElevenLabs
+    const url = `${ENDPOINT}/${voice_id}`;
+    const payload = {
       text: text,
-      model_id: model_id || 'eleven_turbo_v2_5',
+      model_id: model_id || 'eleven_multilingual_v2',
       voice_settings: voice_settings || {
         stability: 0.5,
-        similarity_boost: 0.5
+        similarity_boost: 0.8
       }
     };
 
-    // Ajouter le code langue si fourni (pour Turbo v2.5)
     if (language_code) {
-      requestBody.language_code = language_code;
+      payload.language_code = language_code;
     }
 
-    // 7. Appel à l'API ElevenLabs avec timeout
-    const startTime = Date.now();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    console.log('🌐 URL ElevenLabs:', url);
+    console.log('📤 Payload:', JSON.stringify(payload, null, 2));
 
-    try {
-      const response = await fetch(`${ENDPOINT}/${voice_id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'xi-api-key': ELEVENLABS_API_KEY
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal
-      });
+    // 6. Appel à l'API ElevenLabs
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify(payload)
+    });
 
-      clearTimeout(timeout);
-      const duration = Date.now() - startTime;
+    console.log('📡 Réponse ElevenLabs:', response.status, response.statusText);
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`Erreur de l'API ElevenLabs: ${response.status} ${errorBody}`);
-        return res.json({ 
-          error: `Erreur de l'API ElevenLabs: ${response.status}`,
-          details: errorBody.slice(0, 200)
-        }, 502);
-      }
-
-      // 8. Récupération de l'audio
-      const audioBuffer = await response.arrayBuffer();
-      const contentType = response.headers.get('content-type') || 'audio/mpeg';
-
-      // 9. Conversion en base64 pour la réponse
-      const base64Audio = Buffer.from(audioBuffer).toString('base64');
-
-      // 10. Logs de succès
-      console.log(`✅ Audio généré avec succès: ${audioBuffer.byteLength} bytes en ${duration}ms`);
-
-      // 11. Retour de la réponse avec l'audio
-      return res.json({
-        success: true,
-        audio: base64Audio,
-        contentType: contentType,
-        size: audioBuffer.byteLength,
-        duration: duration,
-        voiceId: voice_id,
-        modelId: model_id || 'eleven_turbo_v2_5',
-        languageCode: language_code || null
-      }, 200);
-
-    } catch (fetchError) {
-      clearTimeout(timeout);
-      
-      if (fetchError.name === 'AbortError') {
-        console.error('❌ Timeout: Requête ElevenLabs expirée après 30s');
-        return res.json({ 
-          error: 'Timeout: La requête a expiré après 30 secondes.' 
-        }, 504);
-      }
-      
-      throw fetchError;
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('❌ Erreur ElevenLabs:', response.status, errorBody);
+      return res.send(`Erreur de l'API externe: ${response.status}`, 502);
     }
+
+    // 7. Récupération de l'audio
+    const audioBuffer = await response.arrayBuffer();
+    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+
+    console.log('🎵 Audio généré:', {
+      size: audioBuffer.byteLength,
+      base64Length: audioBase64.length
+    });
+
+    // 8. Retour de la réponse
+    const result = {
+      success: true,
+      audio: audioBase64,
+      contentType: 'audio/mpeg',
+      size: audioBuffer.byteLength,
+      duration: Math.round(audioBuffer.byteLength / 16000), // Estimation
+      voiceId: voice_id,
+      modelId: model_id || 'eleven_multilingual_v2',
+      text: text.substring(0, 100) + (text.length > 100 ? '...' : '')
+    };
+
+    console.log('✅ Succès:', {
+      success: result.success,
+      size: result.size,
+      duration: result.duration
+    });
+
+    return res.send(JSON.stringify(result), 200, {
+      'Content-Type': 'application/json'
+    });
 
   } catch (error) {
-    console.error('❌ Erreur interne:', error);
-    return res.json({ 
+    console.error('💥 Erreur interne:', error);
+    return res.send(JSON.stringify({
+      success: false,
       error: 'Erreur interne du serveur.',
-      details: error.message 
-    }, 500);
+      details: error.message
+    }), 500, {
+      'Content-Type': 'application/json'
+    });
   }
 };

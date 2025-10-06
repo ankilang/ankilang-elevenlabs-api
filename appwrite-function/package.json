@@ -4,7 +4,8 @@
   "description": "Appwrite function to proxy ElevenLabs API for Ankilang",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo \"No build step required for this function\""
   },
   "dependencies": {
     "node-fetch": "^2.7.0"

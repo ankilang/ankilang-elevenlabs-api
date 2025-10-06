@@ -33,8 +33,7 @@ Ce guide vous accompagne pour migrer votre fonction ElevenLabs de Netlify vers A
 ```
 ankilang-elevenlabs-api/
 ├── appwrite-function/           # 🆕 Nouvelle fonction Appwrite
-│   ├── src/
-│   │   └── index.js            # Fonction principale
+│   ├── index.js                # Fonction principale
 │   ├── package.json             # Dépendances
 │   ├── README.md              # Documentation
 │   ├── DEPLOYMENT.md          # Guide de déploiement

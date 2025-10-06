@@ -15,7 +15,7 @@ Ce guide vous accompagne pour déployer la fonction ElevenLabs sur Appwrite et m
 
 ### 1. Créer la fonction dans Appwrite
 
-1. **Connectez-vous** à [cloud.appwrite.io](https://cloud.appwrite.io) (région **fra**)
+1. **Connectez-vous** à [cloud.appwrite.io](https://cloud.appwrite.io) ou directement à [fra.cloud.appwrite.io](https://fra.cloud.appwrite.io) (région **fra**)
 2. **Sélectionnez** votre projet Ankilang
 3. **Allez** dans **Functions** dans le menu de gauche
 4. **Cliquez** sur **Create Function**

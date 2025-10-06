@@ -61,7 +61,7 @@ module.exports = async (context) => {
     const url = `${ENDPOINT}/${voice_id}`;
     const payload = {
       text: text,
-      model_id: model_id || 'eleven_multilingual_v2',
+      model_id: model_id || 'eleven_turbo_v2_5',
       voice_settings: voice_settings || { stability: 0.5, similarity_boost: 0.8 }
     };
 
@@ -98,7 +98,7 @@ module.exports = async (context) => {
       contentType: 'audio/mpeg',
       size: audioBuffer.byteLength,
       voiceId: voice_id,
-      modelId: model_id || 'eleven_multilingual_v2',
+      modelId: model_id || 'eleven_turbo_v2_5',
       text: text.substring(0, 100) + (text.length > 100 ? '...' : '')
     };
 

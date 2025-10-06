@@ -9,7 +9,7 @@ import { Client, Functions } from 'appwrite';
 const FUNCTION_ID = '68e3951700118da88425'; // ID de votre fonction (remplacer par l'ID réel)
 const client = new Client()
   .setEndpoint('https://fra.cloud.appwrite.io/v1')
-  .setProject('your-project-id');
+  .setProject('your-project-id'); // ⚠️ REMPLACER par votre PROJECT_ID réel
 
 const functions = new Functions(client);
 
@@ -91,8 +91,8 @@ export async function ttsToBlobAppwrite(
       console.log('✅ [Appwrite] Audio généré avec succès:', {
         size: data.size,
         contentType: data.contentType,
-        duration: data.duration,
-        voiceId: data.voiceId
+        voiceId: data.voiceId,
+        modelId: data.modelId
       });
 
       // Conversion base64 vers Blob

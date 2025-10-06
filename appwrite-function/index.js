@@ -120,7 +120,7 @@ module.exports = async (context) => {
         model_id: modelToUse,
         language_code: lang2 || undefined,
         voice_settings: voice_settings || undefined,
-        output_format: 'mp3_44100_128'
+        output_format: 'mp3_22050_64'  // Format plus léger pour éviter troncature
       };
       
       const r = await fetch(url, {
@@ -141,12 +141,17 @@ module.exports = async (context) => {
       const ab = await r.arrayBuffer();
       audioBase64 = Buffer.from(ab).toString('base64');
       contentType = 'audio/mpeg';
+      
+      // 🔒 Log pour confirmer la taille
+      log(`✅ REST OK — bytes=${ab.byteLength}, b64len=${audioBase64.length}`);
     }
 
+    // 🔒 Renvoie TOUJOURS ce schéma, + méta utiles
     return res.json({
       success: true,
       audio: audioBase64,
       contentType,
+      size: audioBase64 ? Buffer.from(audioBase64, 'base64').length : 0,  // ← utile côté front
       voiceId: voice_id,
       modelId: modelToUse
     }, 200);

@@ -82,11 +82,24 @@ export async function ttsToBlobAppwrite(
     }
 
     if (result.status === 'completed') {
+      // Debug: voir un extrait de la réponse brute
+      console.log('[TTS] raw response (first 200):', (result.response || '').slice(0, 200));
+      
       let data;
       try { 
-        data = JSON.parse(result.response); 
+        data = JSON.parse(result.response || '{}'); 
       } catch { 
-        throw new Error(`Réponse invalide: ${result.response?.slice?.(0,200)}`); 
+        throw new Error(`Réponse invalide (executionId=${exec.$id}): ${result.response?.slice?.(0,200) || '<vide>'}`); 
+      }
+      
+      // Parfois la fonction peut renvoyer autre chose (fallback futur), on couvre:
+      const audioB64 =
+        data?.audio ||
+        data?.data?.audio ||                   // safety
+        (typeof data === 'string' && data);    // au cas improbable où on reçoit déjà du base64
+
+      if (!audioB64) {
+        throw new Error(`Audio manquant (executionId=${exec.$id})`);
       }
       
       console.log('✅ [Appwrite] Audio généré avec succès:', {
@@ -97,7 +110,7 @@ export async function ttsToBlobAppwrite(
       });
 
       // Conversion base64 vers Blob
-      const audioData = atob(data.audio);
+      const audioData = atob(audioB64);
       const audioArray = new Uint8Array(audioData.length);
       
       for (let i = 0; i < audioData.length; i++) {
@@ -156,6 +169,38 @@ export async function generateTTSAdvanced(options) {
     modelId, 
     voiceSettings
   );
+}
+
+/**
+ * Exemple d'utilisation correcte du Blob audio
+ * @param {string} text - Texte à convertir
+ * @param {string} voiceId - ID de la voix
+ */
+export async function playTTSExample(text, voiceId) {
+  try {
+    // Générer l'audio
+    const blob = await ttsToBlobAppwrite(text, voiceId);
+    
+    // Créer une URL pour le Blob
+    const url = URL.createObjectURL(blob);
+    
+    // Jouer l'audio
+    const audio = new Audio(url);
+    audio.play();
+    
+    // Nettoyer l'URL après utilisation (optionnel)
+    audio.onended = () => URL.revokeObjectURL(url);
+    
+    // Pour télécharger le fichier (optionnel)
+    // const a = document.createElement('a');
+    // a.href = url; 
+    // a.download = `tts_${Date.now()}.mp3`; 
+    // a.click();
+    
+  } catch (error) {
+    console.error('Erreur TTS:', error);
+    throw error;
+  }
 }
 
 // Export par défaut

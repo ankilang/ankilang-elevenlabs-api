@@ -46,7 +46,10 @@ module.exports = async (context) => {
     }
 
     const data = await readJsonBody(req);
+    log('📦 Data parsed:', JSON.stringify(data));
+    
     if (!data || typeof data !== 'object') {
+      log('❌ Invalid JSON body');
       return res.text('Invalid JSON body', 400);
     }
 

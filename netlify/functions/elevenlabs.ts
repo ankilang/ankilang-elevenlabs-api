@@ -52,12 +52,6 @@ const ElevenLabsSchema = z.object({
 const authenticatedHandler = withAuth(async (event: AuthenticatedEvent) => {
   const { traceId, userId } = event;
   
-  // Gestion CORS
-  const corsResult = handleCORS(event);
-  if (corsResult) {
-    return corsResult;
-  }
-
   // Vérification de la méthode HTTP
   if (event.httpMethod !== 'POST') {
     logError(traceId, 'elevenlabs', 'invalid_method', `Invalid HTTP method: ${event.httpMethod}`, { method: event.httpMethod }, userId);

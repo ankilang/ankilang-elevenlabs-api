@@ -1,5 +1,6 @@
 import { Client, Account } from 'node-appwrite';
 import { z } from 'zod';
+import { corsHeaders } from './cors';
 
 // Schéma de validation pour l'authentification
 const AuthSchema = z.object({
@@ -44,9 +45,12 @@ export function withAuth(handler: (event: AuthenticatedEvent) => Promise<any>) {
       // Extraction du JWT depuis les headers
       const authHeader = event.headers.Authorization || event.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        const origin = event.headers.Origin || event.headers.origin;
+        const headers = corsHeaders(origin, { 'Content-Type': 'application/json' });
+        
         return {
           statusCode: 401,
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             type: 'https://ankilang.com/errors/unauthorized',
             title: 'Unauthorized',
@@ -66,9 +70,12 @@ export function withAuth(handler: (event: AuthenticatedEvent) => Promise<any>) {
       const session = await account.getSession(jwt);
       
       if (!session || !session.userId) {
+        const origin = event.headers.Origin || event.headers.origin;
+        const headers = corsHeaders(origin, { 'Content-Type': 'application/json' });
+        
         return {
           statusCode: 401,
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             type: 'https://ankilang.com/errors/unauthorized',
             title: 'Unauthorized',
@@ -88,10 +95,13 @@ export function withAuth(handler: (event: AuthenticatedEvent) => Promise<any>) {
       return await handler(authenticatedEvent);
 
     } catch (error: any) {
+      const origin = event.headers.Origin || event.headers.origin;
+      const headers = corsHeaders(origin, { 'Content-Type': 'application/json' });
+      
       if (error instanceof z.ZodError) {
         return {
           statusCode: 400,
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             type: 'https://ankilang.com/errors/bad-request',
             title: 'Bad Request',
@@ -104,7 +114,7 @@ export function withAuth(handler: (event: AuthenticatedEvent) => Promise<any>) {
 
       return {
         statusCode: 401,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           type: 'https://ankilang.com/errors/unauthorized',
           title: 'Unauthorized',

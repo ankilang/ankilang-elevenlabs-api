@@ -15,9 +15,8 @@ Cette fonction Appwrite remplace la fonction Netlify pour l'API ElevenLabs. Elle
 
 ```
 appwrite-function/
-├── src/
-│   └── index.js          # Fonction principale
-├── package.json          # Dépendances
+├── index.js              # Fonction principale
+├── package.json          # Dépendances (aucune)
 └── README.md            # Documentation
 ```
 
@@ -31,7 +30,7 @@ Dans la console Appwrite, ajoutez ces variables à votre fonction :
 
 ### Dépendances
 
-- `node-fetch@2.7.0` : Pour les requêtes HTTP vers ElevenLabs
+- **Aucune** : Utilise fetch natif Node 18+ (pas de dépendances externes)
 
 ## 📡 Utilisation
 
@@ -112,7 +111,7 @@ const response = await fetch('https://ankilangelevenlabs.netlify.app/.netlify/fu
 
 // APRÈS (Appwrite)
 const response = await functions.createExecution(
-  'elevenlabs-function-id',
+  '68e3951700118da88425', // ID de votre fonction (remplacer par l'ID réel)
   JSON.stringify({ text, voice_id })
 );
 ```
@@ -120,10 +119,11 @@ const response = await functions.createExecution(
 ## 🛠️ Déploiement
 
 1. **Créer la fonction** dans la console Appwrite
-2. **Uploader le code** (dossier `appwrite-function/`)
+2. **Uploader le code** (ZIP avec `index.js` + `package.json` à la racine)
 3. **Configurer les variables** d'environnement
-4. **Activer la fonction**
-5. **Tester** avec l'endpoint fourni
+4. **Configurer les permissions** (autoriser l'exécution pour les utilisateurs authentifiés)
+5. **Activer la fonction**
+6. **Tester** avec l'endpoint fourni
 
 ## 🔒 Sécurité
 

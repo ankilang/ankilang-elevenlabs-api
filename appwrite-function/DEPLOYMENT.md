@@ -22,7 +22,7 @@ Ce guide vous accompagne pour déployer la fonction ElevenLabs sur Appwrite et m
 5. **Configurez** la fonction :
    - **Name** : `ankilang-elevenlabs`
    - **Runtime** : `Node.js`
-   - **Version** : `node-18` (ou plus récent)
+   - **Version** : `node-18/20/22` (testé en Node 22)
 
 ### 2. Uploader le code
 

@@ -26,11 +26,11 @@ ankilang-elevenlabs-api/
 ### 1. Prérequis
 - Compte Appwrite
 - Clé API ElevenLabs
-- Runtime Node.js 18+
+- Runtime Node.js 18/20/22 (testé en Node 22)
 
 ### 2. Configuration
 1. **Créez** une fonction dans Appwrite
-2. **Uploadez** le dossier `appwrite-function/` en ZIP
+2. **Uploadez** le contenu du dossier `appwrite-function/` en ZIP (index.js + package.json à la racine)
 3. **Configurez** la variable `ELEVENLABS_API_KEY`
 4. **Activez** la fonction
 

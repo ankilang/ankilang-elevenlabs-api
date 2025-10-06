@@ -1,9 +1,9 @@
 /**
  * Fonction ElevenLabs sécurisée pour Ankilang
- * Text-to-Speech avec authentification JWT et rate limiting
+ * Text-to-Speech avec authentification par session Appwrite
  */
 
-import { withAuth, AuthenticatedEvent } from '../../lib/auth';
+import { withSessionAuth, SessionAuthenticatedEvent } from '../../lib/auth-session';
 import { handleCORS, corsHeaders } from '../../lib/cors';
 import { rateLimit } from '../../lib/rate-limit';
 import { problem } from '../../lib/problem';
@@ -47,10 +47,10 @@ const ElevenLabsSchema = z.object({
 });
 
 /**
- * Fonction principale ElevenLabs
+ * Fonction principale ElevenLabs avec authentification par session
  */
-const authenticatedHandler = withAuth(async (event: AuthenticatedEvent) => {
-  const { traceId, userId } = event;
+const authenticatedHandler = withSessionAuth(async (event: SessionAuthenticatedEvent) => {
+  const { traceId, userId, sessionId } = event;
   
   // Vérification de la méthode HTTP
   if (event.httpMethod !== 'POST') {
@@ -70,8 +70,8 @@ export const handler = async (event: any) => {
   return authenticatedHandler(event);
 };
 
-async function handleElevenLabsRequest(event: AuthenticatedEvent) {
-  const { traceId, userId } = event;
+async function handleElevenLabsRequest(event: SessionAuthenticatedEvent) {
+  const { traceId, userId, sessionId } = event;
 
   try {
     // Rate limiting
@@ -99,7 +99,8 @@ async function handleElevenLabsRequest(event: AuthenticatedEvent) {
       textLength: validatedData.text.length, 
       voiceId: validatedData.voice_id,
       modelId: validatedData.model_id,
-      languageCode: validatedData.language_code
+      languageCode: validatedData.language_code,
+      sessionId: sessionId.substring(0, 8) + '...' // Log partiel de la session
     }, userId);
 
     // Préparation de la requête ElevenLabs

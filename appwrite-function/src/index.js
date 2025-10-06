@@ -5,6 +5,35 @@
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ENDPOINT = 'https://api.elevenlabs.io/v1/text-to-speech';
 
+// Parseur défensif du body (gère Appwrite selon versions / runtimes)
+async function readJsonBody(req) {
+  // 1) Si Appwrite t'a déjà donné une string JSON
+  if (typeof req.body === 'string' && req.body.trim()) {
+    try { return JSON.parse(req.body); } catch {}
+  }
+
+  // 2) Certains runtimes exposent un Buffer/Uint8Array
+  if (req.bodyRaw) {
+    try {
+      const text = Buffer.isBuffer(req.bodyRaw)
+        ? req.bodyRaw.toString('utf8')
+        : String(req.bodyRaw);
+      if (text.trim()) return JSON.parse(text);
+    } catch {}
+  }
+
+  // 3) Ancien champ 'payload' (string)
+  if (typeof req.payload === 'string' && req.payload.trim()) {
+    try { return JSON.parse(req.payload); } catch {}
+  }
+
+  // 4) Ultime tentative : si req.body est déjà un objet
+  if (req.body && typeof req.body === 'object') return req.body;
+
+  // Rien de parsable → objet vide
+  return {};
+}
+
 module.exports = async (context) => {
   const { req, res, log, error } = context;
 
@@ -16,17 +45,12 @@ module.exports = async (context) => {
       return res.text('Use POST', 405);
     }
 
-    // Appwrite conseille d'utiliser bodyJson()/bodyText(), pas req.body
-    // https://appwrite.io/docs/products/functions/develop
-    let data;
-    try {
-      data = await req.bodyJson(); // parse JSON automatiquement
-    } catch (e) {
-      log(`❌ JSON parse error: ${e.message}`);
+    const data = await readJsonBody(req);
+    if (!data || typeof data !== 'object') {
       return res.text('Invalid JSON body', 400);
     }
 
-    const { text, voice_id, model_id, language_code, voice_settings } = data || {};
+    const { text, voice_id, model_id, language_code, voice_settings } = data;
 
     if (!text || !voice_id) {
       return res.text("Missing 'text' or 'voice_id'", 400);
@@ -47,7 +71,6 @@ module.exports = async (context) => {
       ...(language_code ? { language_code } : {})
     };
 
-    log(`🌐 ElevenLabs URL: ${url}`);
     const r = await fetch(url, {
       method: 'POST',
       headers: {
@@ -58,7 +81,7 @@ module.exports = async (context) => {
     });
 
     if (!r.ok) {
-      const errText = await r.text();
+      const errText = await r.text().catch(() => '');
       error(`❌ ElevenLabs ${r.status}: ${errText}`);
       return res.text(`Upstream error ${r.status}`, 502);
     }
@@ -66,8 +89,7 @@ module.exports = async (context) => {
     const audioArrayBuffer = await r.arrayBuffer();
     const audioBase64 = Buffer.from(audioArrayBuffer).toString('base64');
 
-    // Durée estimée: optionnel → on peut l'omettre pour éviter l'ambiguïté
-    const result = {
+    return res.json({
       success: true,
       audio: audioBase64,
       contentType: 'audio/mpeg',
@@ -75,9 +97,7 @@ module.exports = async (context) => {
       voiceId: voice_id,
       modelId: payload.model_id,
       text: text.length > 100 ? `${text.slice(0, 100)}...` : text
-    };
-
-    return res.json(result, 200);
+    }, 200);
   } catch (e) {
     error(`💥 Internal error: ${e.stack || e.message}`);
     return res.json(

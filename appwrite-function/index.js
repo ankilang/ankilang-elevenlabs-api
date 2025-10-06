@@ -53,32 +53,35 @@ module.exports = async (context) => {
   log(`📋 Request: text_length=${text.length}, voice_id=${voice_id}, language_code=${reqLang}, model=${modelToUse}`);
 
   try {
-    const resp = await client.textToSpeech.convert({
-      voice_id,
-      model_id: modelToUse,
-      text,
-      language_code: lang2 ? lang2 : undefined,
-      voice_settings: voice_settings || undefined
-    });
+    // Construire l'objet request avec camelCase
+    const request = {
+      text,                             // string
+      modelId: modelToUse,              // ex: 'eleven_turbo_v2_5' ou 'eleven_multilingual_v2'
+      languageCode: lang2 || undefined, // 'fr', 'de', … (2 lettres) ou undefined
+      voiceSettings: voice_settings || undefined,
+      // outputFormat: 'mp3_44100_128', // si tu veux forcer un format
+    };
 
-    if (!resp || !resp.audio) {
+    // ✅ IMPORTANT : 2 arguments (voiceId, request)
+    const sdkResp = await client.textToSpeech.convert(voice_id, request);
+
+    // Selon la version du SDK, sdkResp.audio peut être string (base64) ou Buffer/Uint8Array :
+    let audioBase64;
+    let contentType = 'audio/mpeg';
+    if (typeof sdkResp?.audio === 'string') {
+      audioBase64 = sdkResp.audio;
+      contentType = sdkResp.contentType || contentType;
+    } else if (sdkResp?.audio) {
+      audioBase64 = Buffer.from(sdkResp.audio).toString('base64');
+      contentType = sdkResp.contentType || contentType;
+    } else {
       throw new Error('Empty audio from SDK');
     }
-
-    // Gestion robuste de resp.audio (string base64 ou Buffer)
-    let audioBase64;
-    if (typeof resp.audio === 'string') {
-      audioBase64 = resp.audio; // déjà base64
-    } else {
-      audioBase64 = Buffer.from(resp.audio).toString('base64');
-    }
-    
-    const contentType = resp.contentType || 'audio/mpeg';
 
     return res.json({
       success: true,
       audio: audioBase64,
-      contentType: contentType,
+      contentType,
       voiceId: voice_id,
       modelId: modelToUse
     }, 200);

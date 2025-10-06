@@ -33,12 +33,12 @@ module.exports = async (context) => {
     log(`📥 Method: ${req.method}`);
 
     if (req.method !== 'POST') {
-      return res.text('Use POST', 405);
+      return res.json({ success: false, error: 'Method Not Allowed' }, 405);
     }
 
     const requestData = await readJsonBody(req);
     if (!requestData || typeof requestData !== 'object') {
-      return res.text('Invalid JSON body', 400);
+      return res.json({ success: false, error: 'Invalid JSON body' }, 400);
     }
 
     log('📋 Parsed:', JSON.stringify(requestData));
@@ -46,16 +46,16 @@ module.exports = async (context) => {
     const { text, voice_id, model_id, language_code, voice_settings } = requestData;
 
     if (!text || !voice_id) {
-      return res.text("Missing 'text' or 'voice_id'", 400);
+      return res.json({ success: false, error: "Missing 'text' or 'voice_id'" }, 400);
     }
 
     if (!ELEVENLABS_API_KEY) {
       error('Missing ELEVENLABS_API_KEY');
-      return res.text('Server not configured', 500);
+      return res.json({ success: false, error: 'Server not configured' }, 500);
     }
 
     if (text.length > 5000) {
-      return res.text('Text too long (max 5000 chars)', 400);
+      return res.json({ success: false, error: 'Text too long (max 5000 chars)' }, 400);
     }
 
     const url = `${ENDPOINT}/${voice_id}`;

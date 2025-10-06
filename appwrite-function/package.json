@@ -7,8 +7,15 @@
   "scripts": {
     "build": "echo \"No build step required\""
   },
-  "dependencies": {},
-  "keywords": ["elevenlabs", "tts", "ankilang", "appwrite"],
+  "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.17.0"
+  },
+  "keywords": [
+    "elevenlabs",
+    "tts",
+    "ankilang",
+    "appwrite"
+  ],
   "author": "Ankilang Team",
   "license": "ISC"
 }

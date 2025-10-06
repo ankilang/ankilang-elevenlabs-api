@@ -1,115 +1,90 @@
-/**
- * Appwrite Function: ElevenLabs TTS (Node 18+)
- * Handler basé sur `context` + parsing body robuste
- */
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const ENDPOINT = 'https://api.elevenlabs.io/v1/text-to-speech';
+// index.js (fonction Appwrite)
+const { ElevenLabsClient } = require("@elevenlabs/elevenlabs-js");
 
-async function readJsonBody(req) {
-  // 1) body string JSON
-  if (typeof req.body === 'string' && req.body.trim()) {
-    try { return JSON.parse(req.body); } catch {}
-  }
-  // 2) bodyRaw (Buffer / Uint8Array)
-  if (req.bodyRaw) {
-    try {
-      const text = Buffer.isBuffer(req.bodyRaw) ? req.bodyRaw.toString('utf8') : String(req.bodyRaw);
-      if (text.trim()) return JSON.parse(text);
-    } catch {}
-  }
-  // 3) payload (ancien champ)
-  if (typeof req.payload === 'string' && req.payload.trim()) {
-    try { return JSON.parse(req.payload); } catch {}
-  }
-  // 4) objet déjà parsé
-  if (req.body && typeof req.body === 'object') return req.body;
-  return {};
-}
+const client = new ElevenLabsClient({
+  apiKey: process.env.ELEVENLABS_API_KEY
+});
 
 module.exports = async (context) => {
   const { req, res, log, error } = context;
+
+  log('🚀 ElevenLabs function start');
+  if (req.method === 'OPTIONS') {
+    return res.text('', 204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+    });
+  }
+
+  if (req.method !== 'POST') {
+    return res.json({ success: false, error: 'Method Not Allowed' }, 405);
+  }
+
+  let body;
   try {
-    log('🚀 ElevenLabs function start');
-    log(`📥 Method: ${req.method}`);
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  } catch (e) {
+    return res.json({ success: false, error: 'Invalid JSON body' }, 400);
+  }
 
-    if (req.method !== 'POST') {
-      return res.json({ success: false, error: 'Method Not Allowed' }, 405);
+  const { text, voice_id, model_id: reqModel, language_code: reqLang, voice_settings } = body || {};
+
+  if (!text || !voice_id) {
+    return res.json({ success: false, error: "Missing 'text' or 'voice_id'" }, 400);
+  }
+
+  // Normalisation du code langue
+  let lang2 = null;
+  if (reqLang) {
+    lang2 = String(reqLang).split('-')[0].toLowerCase();
+  }
+
+  // Déterminer le modèle à utiliser
+  let modelToUse = reqModel;
+  if (!modelToUse) {
+    if (lang2 && lang2 !== 'en') {
+      modelToUse = 'eleven_multilingual_v2';
+    } else {
+      modelToUse = 'eleven_turbo_v2_5';
     }
+  }
 
-    const requestData = await readJsonBody(req);
-    if (!requestData || typeof requestData !== 'object') {
-      return res.json({ success: false, error: 'Invalid JSON body' }, 400);
-    }
+  log(`📋 Request: text_length=${text.length}, voice_id=${voice_id}, language_code=${reqLang}, model=${modelToUse}`);
 
-    log('📋 Parsed:', JSON.stringify(requestData));
-
-    const { text, voice_id, model_id, language_code, voice_settings } = requestData;
-
-    if (!text || !voice_id) {
-      return res.json({ success: false, error: "Missing 'text' or 'voice_id'" }, 400);
-    }
-
-    if (!ELEVENLABS_API_KEY) {
-      error('Missing ELEVENLABS_API_KEY');
-      return res.json({ success: false, error: 'Server not configured' }, 500);
-    }
-
-    if (text.length > 5000) {
-      return res.json({ success: false, error: 'Text too long (max 5000 chars)' }, 400);
-    }
-
-    const url = `${ENDPOINT}/${voice_id}`;
-    const payload = {
-      text: text,
-      model_id: model_id || 'eleven_turbo_v2_5',
-      voice_settings: voice_settings || { stability: 0.5, similarity_boost: 0.8 }
-    };
-
-    if (language_code) {
-      payload.language_code = language_code;
-    }
-
-    log(`🌐 ElevenLabs URL: ${url}`);
-    log(`📤 Payload: voice_id=${voice_id}, model_id=${payload.model_id}, text_length=${text.length}`);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'xi-api-key': ELEVENLABS_API_KEY
-      },
-      body: JSON.stringify(payload)
+  try {
+    const resp = await client.textToSpeech.convert({
+      voice_id,
+      model_id: modelToUse,
+      text,
+      language_code: lang2 ? lang2 : undefined,
+      voice_settings: voice_settings || undefined
     });
 
-    log(`📡 ElevenLabs: ${response.status} ${response.statusText}`);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      error(`❌ Upstream ${response.status}: ${errorBody}`);
-      return res.json({
-        success: false,
-        error: 'Upstream error',
-        status: response.status
-      }, 502);
+    if (!resp || !resp.audio) {
+      throw new Error('Empty audio from SDK');
     }
 
-    const audioBuffer = await response.arrayBuffer();
-    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
-
-    const result = {
+    // `resp.audio` est base64 déjà selon le SDK (ou buffer selon version) — adapte selon ce que le SDK fournit
+    // On suppose `resp.audio` est base64 string
+    return res.json({
       success: true,
-      audio: audioBase64,
-      contentType: 'audio/mpeg',
-      size: audioBuffer.byteLength,
+      audio: resp.audio,
+      contentType: resp.getContentType ? resp.getContentType() : 'audio/mpeg',
       voiceId: voice_id,
-      modelId: model_id || 'eleven_turbo_v2_5',
-      text: text.substring(0, 100) + (text.length > 100 ? '...' : '')
-    };
+      modelId: modelToUse
+    }, 200);
 
-    return res.json(result, 200);
-
-  } catch (error) {
-    context.error?.(`💥 Internal: ${error.stack || error.message}`);
-    return res.json({ success: false, error: 'Internal server error', details: error.message }, 500);
+  } catch (err) {
+    error(`❌ ElevenLabs SDK error: ${err.message}`);
+    let errMsg = err.message;
+    // Si l'erreur provient de la réponse ElevenLabs, essaie de décoder
+    try {
+      const j = JSON.parse(err.message);
+      if (j.detail && j.detail.message) {
+        errMsg = j.detail.message;
+      }
+    } catch (_) {}
+    return res.json({ success: false, error: errMsg }, 502);
   }
 };

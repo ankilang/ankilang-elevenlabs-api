@@ -70,7 +70,7 @@ module.exports = async (context) => {
     }
 
     log(`🌐 ElevenLabs URL: ${url}`);
-    log(`📤 Payload: ${JSON.stringify(payload)}`);
+    log(`📤 Payload: voice_id=${voice_id}, model_id=${payload.model_id}, text_length=${text.length}`);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -86,7 +86,11 @@ module.exports = async (context) => {
     if (!response.ok) {
       const errorBody = await response.text();
       error(`❌ Upstream ${response.status}: ${errorBody}`);
-      return res.text(`Upstream error ${response.status}`, 502);
+      return res.json({
+        success: false,
+        error: 'Upstream error',
+        status: response.status
+      }, 502);
     }
 
     const audioBuffer = await response.arrayBuffer();

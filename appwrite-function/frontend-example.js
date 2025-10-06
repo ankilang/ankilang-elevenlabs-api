@@ -106,8 +106,10 @@ export async function ttsToBlobAppwrite(
       return new Blob([audioArray], { type: data.contentType });
       
     } else if (result.status === 'failed') {
-      const error = JSON.parse(result.response);
-      throw new Error(`Fonction échouée: ${error.error || 'Erreur inconnue'}`);
+      let errorData = {};
+      try { errorData = JSON.parse(result.response); } catch { /* noop */ }
+      const msg = errorData.error || result.response || 'Erreur inconnue';
+      throw new Error(`Fonction échouée: ${msg}`);
       
     } else {
       throw new Error(`Statut inattendu: ${result.status}`);

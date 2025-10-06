@@ -29,7 +29,7 @@ Ce guide vous accompagne pour déployer la fonction ElevenLabs sur Appwrite et m
 1. **Placez** `index.js` et `package.json` à la **racine** du dossier de la fonction
 2. **Compressez** le **contenu** du dossier (et pas le dossier parent) en ZIP
 3. **Uploadez** le ZIP dans la fonction
-3. **Attendez** que le build se termine
+4. **Attendez** que le build se termine
 
 ### 3. Configurer les variables d'environnement
 

@@ -77,7 +77,7 @@ const execution = await functions.createExecution(
   "contentType": "audio/mpeg",
   "size": 12345,
   "voiceId": "21m00Tcm4TlvDq8ikWAM",
-  "modelId": "eleven_multilingual_v2",
+  "modelId": "eleven_turbo_v2_5",
   "text": "Hello, this is a test."
 }
 ```

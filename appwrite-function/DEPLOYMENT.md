@@ -22,12 +22,13 @@ Ce guide vous accompagne pour déployer la fonction ElevenLabs sur Appwrite et m
 5. **Configurez** la fonction :
    - **Name** : `ankilang-elevenlabs`
    - **Runtime** : `Node.js`
-   - **Version** : `node-18.0` (ou plus récent)
+   - **Version** : `node-18` (ou plus récent)
 
 ### 2. Uploader le code
 
-1. **Compressez** le dossier `appwrite-function/` en ZIP
-2. **Uploadez** le fichier ZIP dans la fonction
+1. **Placez** `index.js` et `package.json` à la **racine** du dossier de la fonction
+2. **Compressez** le **contenu** du dossier (et pas le dossier parent) en ZIP
+3. **Uploadez** le ZIP dans la fonction
 3. **Attendez** que le build se termine
 
 ### 3. Configurer les variables d'environnement
@@ -47,16 +48,19 @@ Ce guide vous accompagne pour déployer la fonction ElevenLabs sur Appwrite et m
 ### 5. Tester la fonction
 
 1. **Copiez** l'URL d'exécution depuis l'onglet **Overview**
-2. **Testez** avec un outil comme Postman ou curl :
+2. **Testez** avec un outil comme Postman ou curl (région **fra**) :
 
 ```bash
-curl -X POST "https://cloud.appwrite.io/v1/functions/{functionId}/executions" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+export APPWRITE_HOST="https://fra.cloud.appwrite.io"
+export PROJECT_ID="<projectId>"
+export FUNCTION_ID="<functionId>"
+export API_KEY="<server-key-with-functions.execute>"
+BODY='{"text":"Hello, this is a test.","voice_id":"21m00Tcm4TlvDq8ikWAM"}'
+curl -X POST "$APPWRITE_HOST/v1/functions/$FUNCTION_ID/executions" \
+  -H "X-Appwrite-Project: $PROJECT_ID" \
+  -H "X-Appwrite-Key: $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "text": "Hello, this is a test.",
-    "voice_id": "21m00Tcm4TlvDq8ikWAM"
-  }'
+  -d "$(jq -nc --arg body "$BODY" '{body:$body}')"
 ```
 
 ## 🔄 Migration du frontend

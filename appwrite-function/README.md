@@ -38,14 +38,24 @@ Dans la console Appwrite, ajoutez ces variables à votre fonction :
 ### Endpoint
 
 ```
-POST /v1/functions/{functionId}/executions
+POST https://fra.cloud.appwrite.io/v1/functions/{functionId}/executions
 ```
 
-### Headers requis
+### Requête REST (cURL)
+> IMPORTANT : le payload doit être passé dans le champ **`body`** (string JSON).
+```bash
+export PROJECT_ID="ankilang"
+export FUNCTION_ID="<your-function-id>"
+export API_KEY="<server-key-with-functions.execute>"
+export APPWRITE_HOST="https://fra.cloud.appwrite.io"
 
-```
-Authorization: Bearer <jwt_token>
-Content-Type: application/json
+BODY='{"text":"Bonjour Appwrite via curl","voice_id":"21m00Tcm4TlvDq8ikWAM"}'
+
+curl -s -X POST "$APPWRITE_HOST/v1/functions/$FUNCTION_ID/executions" \
+  -H "X-Appwrite-Project: $PROJECT_ID" \
+  -H "X-Appwrite-Key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -nc --arg body "$BODY" '{body:$body}')"
 ```
 
 ### Body de la requête

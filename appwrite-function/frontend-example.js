@@ -3,11 +3,11 @@
  * À intégrer dans votre application Ankilang
  */
 
-import { Functions } from 'appwrite';
+import { Client, Functions } from 'appwrite';
 
 // Configuration Appwrite (à adapter selon votre setup)
 const client = new Client()
-  .setEndpoint('https://cloud.appwrite.io/v1')
+  .setEndpoint('https://fra.cloud.appwrite.io/v1')
   .setProject('your-project-id');
 
 const functions = new Functions(client);

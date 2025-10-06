@@ -10,13 +10,14 @@ Cette fonction Appwrite remplace la fonction Netlify pour l'API ElevenLabs. Elle
 - ✅ **Authentification native** : Utilise les sessions Appwrite existantes
 - ✅ **Plus simple** : Moins de complexité que Netlify Functions
 - ✅ **Intégration native** : Fonctionne directement avec l'écosystème Appwrite
+- ✅ **SDK officiel** : Utilise le SDK ElevenLabs officiel pour plus de robustesse
 
 ## 📁 Structure
 
 ```
 appwrite-function/
 ├── index.js              # Fonction principale
-├── package.json          # Dépendances (aucune)
+├── package.json          # Dépendances (SDK ElevenLabs)
 └── README.md            # Documentation
 ```
 
@@ -30,7 +31,7 @@ Dans la console Appwrite, ajoutez ces variables à votre fonction :
 
 ### Dépendances
 
-- **Aucune** : Utilise fetch natif Node 18+ (pas de dépendances externes)
+Cette fonction utilise le SDK officiel ElevenLabs (`@elevenlabs/elevenlabs-js`) pour une meilleure robustesse et gestion d'erreurs.
 
 ## 📡 Utilisation
 
@@ -111,7 +112,8 @@ const response = await fetch('https://ankilangelevenlabs.netlify.app/.netlify/fu
 // APRÈS (Appwrite)
 const response = await functions.createExecution(
   '68e3951700118da88425', // ID de votre fonction (remplacer par l'ID réel)
-  JSON.stringify({ text, voice_id })
+  JSON.stringify({ text, voice_id }),
+  'POST' // Méthode HTTP requise
 );
 ```
 

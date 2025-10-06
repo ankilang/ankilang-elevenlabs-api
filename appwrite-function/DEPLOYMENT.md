@@ -91,7 +91,8 @@ export async function ttsToBlobAppwrite(text, voiceId, languageCode) {
         text,
         voice_id: voiceId,
         language_code: languageCode
-      })
+      }),
+      'POST' // Méthode HTTP requise
     );
 
     if (execution.status === 'completed') {

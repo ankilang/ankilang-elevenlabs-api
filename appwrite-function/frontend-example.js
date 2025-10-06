@@ -51,7 +51,8 @@ export async function ttsToBlobAppwrite(
     // Appel de la fonction Appwrite
     const execution = await functions.createExecution(
       FUNCTION_ID,
-      JSON.stringify(params)
+      JSON.stringify(params),
+      'POST' // Méthode HTTP requise
     );
 
     console.log('📡 [Appwrite] Exécution de la fonction:', {

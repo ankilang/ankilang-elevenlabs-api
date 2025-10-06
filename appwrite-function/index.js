@@ -65,12 +65,20 @@ module.exports = async (context) => {
       throw new Error('Empty audio from SDK');
     }
 
-    // `resp.audio` est base64 déjà selon le SDK (ou buffer selon version) — adapte selon ce que le SDK fournit
-    // On suppose `resp.audio` est base64 string
+    // Gestion robuste de resp.audio (string base64 ou Buffer)
+    let audioBase64;
+    if (typeof resp.audio === 'string') {
+      audioBase64 = resp.audio; // déjà base64
+    } else {
+      audioBase64 = Buffer.from(resp.audio).toString('base64');
+    }
+    
+    const contentType = resp.contentType || 'audio/mpeg';
+
     return res.json({
       success: true,
-      audio: resp.audio,
-      contentType: resp.getContentType ? resp.getContentType() : 'audio/mpeg',
+      audio: audioBase64,
+      contentType: contentType,
       voiceId: voice_id,
       modelId: modelToUse
     }, 200);

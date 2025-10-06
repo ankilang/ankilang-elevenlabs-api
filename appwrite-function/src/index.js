@@ -6,31 +6,65 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ENDPOINT = 'https://api.elevenlabs.io/v1/text-to-speech';
 
 // Parseur défensif du body (gère Appwrite selon versions / runtimes)
-async function readJsonBody(req) {
+async function readJsonBody(req, log) {
+  log('🔍 Debugging req object:');
+  log('req.body type:', typeof req.body);
+  log('req.body value:', req.body);
+  log('req.bodyRaw type:', typeof req.bodyRaw);
+  log('req.bodyRaw value:', req.bodyRaw);
+  log('req.payload type:', typeof req.payload);
+  log('req.payload value:', req.payload);
+  log('req keys:', Object.keys(req));
+
   // 1) Si Appwrite t'a déjà donné une string JSON
   if (typeof req.body === 'string' && req.body.trim()) {
-    try { return JSON.parse(req.body); } catch {}
+    log('📝 Trying req.body as string');
+    try { 
+      const parsed = JSON.parse(req.body);
+      log('✅ Parsed from req.body:', parsed);
+      return parsed;
+    } catch (e) {
+      log('❌ Failed to parse req.body:', e.message);
+    }
   }
 
   // 2) Certains runtimes exposent un Buffer/Uint8Array
   if (req.bodyRaw) {
+    log('📝 Trying req.bodyRaw');
     try {
       const text = Buffer.isBuffer(req.bodyRaw)
         ? req.bodyRaw.toString('utf8')
         : String(req.bodyRaw);
-      if (text.trim()) return JSON.parse(text);
-    } catch {}
+      if (text.trim()) {
+        const parsed = JSON.parse(text);
+        log('✅ Parsed from req.bodyRaw:', parsed);
+        return parsed;
+      }
+    } catch (e) {
+      log('❌ Failed to parse req.bodyRaw:', e.message);
+    }
   }
 
   // 3) Ancien champ 'payload' (string)
   if (typeof req.payload === 'string' && req.payload.trim()) {
-    try { return JSON.parse(req.payload); } catch {}
+    log('📝 Trying req.payload');
+    try { 
+      const parsed = JSON.parse(req.payload);
+      log('✅ Parsed from req.payload:', parsed);
+      return parsed;
+    } catch (e) {
+      log('❌ Failed to parse req.payload:', e.message);
+    }
   }
 
   // 4) Ultime tentative : si req.body est déjà un objet
-  if (req.body && typeof req.body === 'object') return req.body;
+  if (req.body && typeof req.body === 'object') {
+    log('✅ Using req.body as object:', req.body);
+    return req.body;
+  }
 
   // Rien de parsable → objet vide
+  log('❌ No parseable data found');
   return {};
 }
 
@@ -45,7 +79,7 @@ module.exports = async (context) => {
       return res.text('Use POST', 405);
     }
 
-    const data = await readJsonBody(req);
+    const data = await readJsonBody(req, log);
     log('📦 Data parsed:', JSON.stringify(data));
     
     if (!data || typeof data !== 'object') {

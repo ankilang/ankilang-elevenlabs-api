@@ -11,8 +11,7 @@ Cette fonction Appwrite sert de proxy sécurisé pour l'API ElevenLabs, permetta
 ```
 ankilang-elevenlabs-api/
 ├── appwrite-function/           # Fonction Appwrite
-│   ├── src/
-│   │   └── index.js            # Fonction principale
+│   ├── index.js                # Fonction principale
 │   ├── package.json           # Dépendances (aucune)
 │   ├── README.md              # Documentation
 │   ├── DEPLOYMENT.md          # Guide de déploiement
@@ -55,7 +54,7 @@ ankilang-elevenlabs-api/
 ### Frontend (JavaScript)
 ```javascript
 const execution = await functions.createExecution(
-  'ankilang-elevenlabs-api',
+  '68e3951700118da88425', // ID de votre fonction (remplacer par l'ID réel)
   JSON.stringify({
     text: "Hello, this is a test.",
     voice_id: "21m00Tcm4TlvDq8ikWAM"

@@ -15,7 +15,7 @@ Ce guide vous accompagne pour déployer la fonction ElevenLabs sur Appwrite et m
 
 ### 1. Créer la fonction dans Appwrite
 
-1. **Connectez-vous** à [cloud.appwrite.io](https://cloud.appwrite.io)
+1. **Connectez-vous** à [cloud.appwrite.io](https://cloud.appwrite.io) (région **fra**)
 2. **Sélectionnez** votre projet Ankilang
 3. **Allez** dans **Functions** dans le menu de gauche
 4. **Cliquez** sur **Create Function**
@@ -39,13 +39,21 @@ Ce guide vous accompagne pour déployer la fonction ElevenLabs sur Appwrite et m
    - **Key** : `ELEVENLABS_API_KEY`
    - **Value** : `votre_clé_api_elevenlabs`
 
-### 4. Activer la fonction
+### 4. Configurer les permissions
+
+1. **Allez** dans l'onglet **Settings** de votre fonction
+2. **Descendez** jusqu'à la section **Execute Access**
+3. **Configurez** les permissions :
+   - **Autoriser l'exécution** pour les "users" (utilisateurs authentifiés)
+   - **Important** : Si vous appelez depuis le navigateur via session, pas d'API Key exposée côté client
+
+### 5. Activer la fonction
 
 1. **Retournez** à l'onglet **Overview**
 2. **Cliquez** sur **Activate** (la fonction est inactive par défaut)
 3. **Attendez** que l'activation se termine
 
-### 5. Tester la fonction
+### 6. Tester la fonction
 
 1. **Copiez** l'URL d'exécution depuis l'onglet **Overview**
 2. **Testez** avec un outil comme Postman ou curl (région **fra**) :

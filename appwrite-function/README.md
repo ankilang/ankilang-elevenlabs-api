@@ -80,10 +80,9 @@ curl -s -X POST "$APPWRITE_HOST/v1/functions/$FUNCTION_ID/executions" \
   "audio": "base64_encoded_audio_data",
   "contentType": "audio/mpeg",
   "size": 12345,
-  "duration": 1500,
   "voiceId": "21m00Tcm4TlvDq8ikWAM",
   "modelId": "eleven_turbo_v2_5",
-  "languageCode": "en"
+  "text": "Hello, this is a test."
 }
 ```
 

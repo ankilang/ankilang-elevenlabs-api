@@ -6,6 +6,7 @@
 import { Client, Functions } from 'appwrite';
 
 // Configuration Appwrite (à adapter selon votre setup)
+const FUNCTION_ID = '68e3951700118da88425'; // ID de votre fonction (remplacer par l'ID réel)
 const client = new Client()
   .setEndpoint('https://fra.cloud.appwrite.io/v1')
   .setProject('your-project-id');
@@ -49,7 +50,7 @@ export async function ttsToBlobAppwrite(
 
     // Appel de la fonction Appwrite
     const execution = await functions.createExecution(
-      '68e3951700118da88425', // ID de votre fonction (remplacer par l'ID réel)
+      FUNCTION_ID,
       JSON.stringify(params)
     );
 
@@ -72,7 +73,7 @@ export async function ttsToBlobAppwrite(
       await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre 1 seconde
       
       result = await functions.getExecution(
-        'ankilang-elevenlabs',
+        FUNCTION_ID,
         execution.$id
       );
       
@@ -80,7 +81,12 @@ export async function ttsToBlobAppwrite(
     }
 
     if (result.status === 'completed') {
-      const data = JSON.parse(result.response);
+      let data;
+      try { 
+        data = JSON.parse(result.response); 
+      } catch { 
+        throw new Error(`Réponse invalide: ${result.response?.slice?.(0,200)}`); 
+      }
       
       console.log('✅ [Appwrite] Audio généré avec succès:', {
         size: data.size,

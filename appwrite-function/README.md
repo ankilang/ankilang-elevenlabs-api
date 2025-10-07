@@ -28,10 +28,16 @@ appwrite-function/
 Dans la console Appwrite, ajoutez ces variables à votre fonction :
 
 - `ELEVENLABS_API_KEY` : Votre clé API ElevenLabs
+- `APPWRITE_API_KEY` : Clé serveur Appwrite (pour upload Storage)
+- `APPWRITE_PROJECT_ID` : ID du projet (défaut: `ankilang`)
+- `APPWRITE_ENDPOINT` : Endpoint Appwrite (défaut: `https://fra.cloud.appwrite.io/v1`)
+- `APPWRITE_BUCKET_ID` : ID du bucket Storage (défaut: `flashcard-images`)
 
 ### Dépendances
 
-Cette fonction utilise le SDK officiel ElevenLabs (`@elevenlabs/elevenlabs-js`) pour une meilleure robustesse et gestion d'erreurs.
+Cette fonction utilise :
+- SDK officiel ElevenLabs (`@elevenlabs/elevenlabs-js`) pour une meilleure robustesse et gestion d'erreurs
+- SDK Appwrite (`node-appwrite`) pour l'upload optionnel dans Storage
 
 ## 📡 Utilisation
 
@@ -69,12 +75,25 @@ curl -s -X POST "$APPWRITE_HOST/v1/functions/$FUNCTION_ID/executions" \
   "voice_settings": {
     "stability": 0.5,
     "similarity_boost": 0.75
-  }
+  },
+  "output_format": "mp3_44100_128",
+  "save_to_storage": false
 }
 ```
 
+### Paramètres
+
+- `text` (requis) : Texte à convertir en audio
+- `voice_id` (requis) : ID de la voix ElevenLabs
+- `model_id` (optionnel) : Modèle à utiliser (défaut: `eleven_turbo_v2_5` pour anglais, `eleven_multilingual_v2` pour autres langues)
+- `language_code` (optionnel) : Code langue (ex: `en`, `fr`, `es`)
+- `voice_settings` (optionnel) : Paramètres de la voix (stability, similarity_boost)
+- `output_format` (optionnel) : Format de sortie (défaut: `mp3_44100_128`)
+- `save_to_storage` (optionnel) : Si `true`, sauvegarde dans Appwrite Storage et renvoie `fileId`/`fileUrl`
+
 ### Réponse
 
+#### Pré-écoute (save_to_storage: false)
 ```json
 {
   "success": true,
@@ -82,8 +101,18 @@ curl -s -X POST "$APPWRITE_HOST/v1/functions/$FUNCTION_ID/executions" \
   "contentType": "audio/mpeg",
   "size": 12345,
   "voiceId": "21m00Tcm4TlvDq8ikWAM",
-  "modelId": "eleven_turbo_v2_5",
-  "text": "Hello, this is a test."
+  "modelId": "eleven_turbo_v2_5"
+}
+```
+
+#### Sauvegarde (save_to_storage: true)
+```json
+{
+  "success": true,
+  "fileId": "64f8a1b2c3d4e5f6g7h8i9j0",
+  "fileUrl": "https://fra.cloud.appwrite.io/storage/buckets/flashcard-images/files/64f8a1b2c3d4e5f6g7h8i9j0/view?project=ankilang",
+  "size": 12345,
+  "contentType": "audio/mpeg"
 }
 ```
 

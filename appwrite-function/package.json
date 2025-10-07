@@ -8,7 +8,8 @@
     "build": "echo \"No build step required\""
   },
   "dependencies": {
-    "@elevenlabs/elevenlabs-js": "^2.17.0"
+    "@elevenlabs/elevenlabs-js": "^2.17.0",
+    "node-appwrite": "^13.0.0"
   },
   "keywords": [
     "elevenlabs",

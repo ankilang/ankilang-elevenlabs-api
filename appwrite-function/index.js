@@ -1,5 +1,6 @@
 // index.js (fonction Appwrite)
 const { ElevenLabsClient } = require("@elevenlabs/elevenlabs-js");
+const { Client, Storage, ID, InputFile } = require('node-appwrite');
 
 const client = new ElevenLabsClient({
   apiKey: process.env.ELEVENLABS_API_KEY
@@ -28,7 +29,7 @@ module.exports = async (context) => {
     return res.json({ success: false, error: 'Invalid JSON body' }, 400);
   }
 
-  const { text, voice_id, model_id: reqModel, language_code: reqLang, voice_settings } = body || {};
+  const { text, voice_id, model_id: reqModel, language_code: reqLang, voice_settings, save_to_storage, output_format } = body || {};
 
   if (!text || !voice_id) {
     return res.json({ success: false, error: "Missing 'text' or 'voice_id'" }, 400);
@@ -60,7 +61,7 @@ module.exports = async (context) => {
       languageCode: lang2 || undefined,    // 'fr', 'de', ...
       voiceSettings: voice_settings || undefined,
       // ⚠️ IMPORTANT: camelCase
-      outputFormat: 'mp3_44100_128'
+      outputFormat: output_format || 'mp3_44100_128'
     };
 
     // Appeler le SDK + logs de structure
@@ -120,7 +121,7 @@ module.exports = async (context) => {
         model_id: modelToUse,
         language_code: lang2 || undefined,
         voice_settings: voice_settings || undefined,
-        output_format: 'mp3_22050_64'  // Format plus léger pour éviter troncature
+        output_format: output_format || 'mp3_22050_64'  // Format plus léger pour éviter troncature
       };
       
       const r = await fetch(url, {
@@ -146,14 +147,49 @@ module.exports = async (context) => {
       log(`✅ REST OK — bytes=${ab.byteLength}, b64len=${audioBase64.length}`);
     }
 
-    // 🔒 Renvoie TOUJOURS ce schéma, + méta utiles
-    return res.json({
+    // Réponse de base
+    const baseResponse = {
       success: true,
       audio: audioBase64,
       contentType,
       size: audioBase64 ? Buffer.from(audioBase64, 'base64').length : 0,  // ← utile côté front
       voiceId: voice_id,
       modelId: modelToUse
+    };
+
+    // 🔀 Si on ne veut pas stocker → renvoie direct le base64
+    if (!save_to_storage) {
+      return res.json(baseResponse, 200);
+    }
+
+    // 💾 Upload dans Appwrite Storage
+    const ENDPOINT   = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
+    const PROJECT_ID = process.env.APPWRITE_PROJECT_ID || 'ankilang';
+    const API_KEY    = process.env.APPWRITE_API_KEY;              // 🔐 clé serveur obligatoire
+    const BUCKET_ID  = process.env.APPWRITE_BUCKET_ID || 'flashcard-images';
+
+    if (!API_KEY) {
+      error('Missing APPWRITE_API_KEY');
+      return res.json({ success: false, error: 'Server misconfigured' }, 500);
+    }
+
+    const awClient  = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID).setKey(API_KEY);
+    const storage   = new Storage(awClient);
+    const buffer    = Buffer.from(audioBase64, 'base64');
+    const filename  = `tts_${Date.now()}.mp3`;
+
+    const file = await storage.createFile(BUCKET_ID, ID.unique(), InputFile.fromBuffer(buffer, filename));
+    const fileId  = file.$id;
+    // URL "view" accessible si bucket public (sinon génère une URL signée côté front)
+    const baseUrl = ENDPOINT.replace('/v1', '');
+    const fileUrl = `${baseUrl}/storage/buckets/${BUCKET_ID}/files/${fileId}/view?project=${PROJECT_ID}`;
+
+    return res.json({
+      success: true,
+      fileId,
+      fileUrl,
+      size: buffer.byteLength,
+      contentType
     }, 200);
 
   } catch (err) {

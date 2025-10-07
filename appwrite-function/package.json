@@ -1,22 +1,12 @@
 {
-  "name": "ankilang-elevenlabs-appwrite",
+  "name": "elevenlabs-appwrite-function",
   "version": "1.0.0",
-  "description": "Appwrite function to proxy ElevenLabs API for Ankilang",
-  "main": "index.js",
   "type": "commonjs",
+  "main": "index.js",
   "scripts": {
-    "build": "echo \"No build step required\""
+    "build": "echo \"No build step\""
   },
   "dependencies": {
-    "@elevenlabs/elevenlabs-js": "^2.17.0",
     "node-appwrite": "^13.0.0"
-  },
-  "keywords": [
-    "elevenlabs",
-    "tts",
-    "ankilang",
-    "appwrite"
-  ],
-  "author": "Ankilang Team",
-  "license": "ISC"
+  }
 }

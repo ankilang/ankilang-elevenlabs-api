@@ -36,8 +36,8 @@ Dans la console Appwrite, ajoutez ces variables à votre fonction :
 ### Dépendances
 
 Cette fonction utilise :
-- SDK officiel ElevenLabs (`@elevenlabs/elevenlabs-js`) pour une meilleure robustesse et gestion d'erreurs
-- SDK Appwrite (`node-appwrite`) pour l'upload optionnel dans Storage
+- **REST API ElevenLabs** : Appel direct via `fetch()` (plus simple et robuste)
+- **SDK Appwrite** (`node-appwrite`) : Pour l'upload optionnel dans Storage
 
 ## 📡 Utilisation
 
@@ -66,18 +66,25 @@ curl -s -X POST "$APPWRITE_HOST/v1/functions/$FUNCTION_ID/executions" \
 
 ### Body de la requête
 
+#### A) Pré-écoute (Base64)
 ```json
 {
-  "text": "Hello, this is a test of ElevenLabs text-to-speech.",
+  "text": "Bonjour, je teste Appwrite et ElevenLabs",
   "voice_id": "21m00Tcm4TlvDq8ikWAM",
-  "model_id": "eleven_turbo_v2_5",
-  "language_code": "en",
-  "voice_settings": {
-    "stability": 0.5,
-    "similarity_boost": 0.75
-  },
-  "output_format": "mp3_44100_128",
+  "language_code": "fr",
+  "output_format": "mp3_22050_64",
   "save_to_storage": false
+}
+```
+
+#### B) Sauvegarde Storage
+```json
+{
+  "text": "Ceci est un test avec sauvegarde dans Appwrite Storage",
+  "voice_id": "21m00Tcm4TlvDq8ikWAM",
+  "language_code": "fr-FR",
+  "output_format": "mp3_44100_128",
+  "save_to_storage": true
 }
 ```
 

@@ -1,207 +1,179 @@
-// index.js (fonction Appwrite)
-const { ElevenLabsClient } = require("@elevenlabs/elevenlabs-js");
-const { Client, Storage, ID, InputFile } = require('node-appwrite');
+// index.js (CommonJS)
+const { Client, Storage, InputFile } = require('node-appwrite');
 
-const client = new ElevenLabsClient({
-  apiKey: process.env.ELEVENLABS_API_KEY
-});
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || 'ankilang';
+const APPWRITE_ENDPOINT   = (process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1').replace(/\/+$/,'');
+const APPWRITE_API_KEY    = process.env.APPWRITE_API_KEY; // clé serveur (pour Storage)
+const APPWRITE_BUCKET_ID  = process.env.APPWRITE_BUCKET_ID || 'flashcard-images';
+
+const ELEVEN_TTS_URL = 'https://api.elevenlabs.io/v1/text-to-speech';
+
+function toISO639_1(lang) {
+  if (!lang) return undefined;
+  const two = String(lang).toLowerCase().split('-')[0];
+  return two && two.length === 2 ? two : undefined;
+}
+
+async function readJsonBody(req) {
+  // 1) body string
+  if (typeof req.body === 'string' && req.body.trim()) {
+    try { return JSON.parse(req.body); } catch {}
+  }
+  // 2) bodyRaw
+  if (req.bodyRaw) {
+    try {
+      const s = Buffer.isBuffer(req.bodyRaw) ? req.bodyRaw.toString('utf8') : String(req.bodyRaw);
+      if (s.trim()) return JSON.parse(s);
+    } catch {}
+  }
+  // 3) payload (ancien Open Runtimes)
+  if (typeof req.payload === 'string' && req.payload.trim()) {
+    try { return JSON.parse(req.payload); } catch {}
+  }
+  // 4) objet déjà parsé
+  if (req.body && typeof req.body === 'object') return req.body;
+  return {};
+}
 
 module.exports = async (context) => {
   const { req, res, log, error } = context;
 
-  log('🚀 ElevenLabs function start');
-  if (req.method === 'OPTIONS') {
-    return res.text('', 204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization'
-    });
-  }
-
-  if (req.method !== 'POST') {
-    return res.json({ success: false, error: 'Method Not Allowed' }, 405);
-  }
-
-  let body;
   try {
-    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch (e) {
-    return res.json({ success: false, error: 'Invalid JSON body' }, 400);
-  }
-
-  const { text, voice_id, model_id: reqModel, language_code: reqLang, voice_settings, save_to_storage, output_format } = body || {};
-
-  if (!text || !voice_id) {
-    return res.json({ success: false, error: "Missing 'text' or 'voice_id'" }, 400);
-  }
-
-  // Normalisation du code langue
-  let lang2 = null;
-  if (reqLang) {
-    lang2 = String(reqLang).split('-')[0].toLowerCase();
-  }
-
-  // Déterminer le modèle à utiliser
-  let modelToUse = reqModel;
-  if (!modelToUse) {
-    if (lang2 && lang2 !== 'en') {
-      modelToUse = 'eleven_multilingual_v2';
-    } else {
-      modelToUse = 'eleven_turbo_v2_5';
+    if (req.method !== 'POST') {
+      return res.json({ success: false, error: 'Method Not Allowed' }, 405);
     }
-  }
 
-  log(`📋 Request: text_length=${text.length}, voice_id=${voice_id}, language_code=${reqLang}, model=${modelToUse}`);
+    if (!ELEVENLABS_API_KEY) {
+      error('Missing ELEVENLABS_API_KEY');
+      return res.json({ success: false, error: 'Server not configured' }, 500);
+    }
 
-  try {
-    // Construire la requête SDK — avec outputFormat
-    const request = {
+    const data = await readJsonBody(req);
+    const {
       text,
-      modelId: modelToUse,                 // 'eleven_turbo_v2_5' OU 'eleven_multilingual_v2'
-      languageCode: lang2 || undefined,    // 'fr', 'de', ...
-      voiceSettings: voice_settings || undefined,
-      // ⚠️ IMPORTANT: camelCase
-      outputFormat: output_format || 'mp3_44100_128'
-    };
+      voice_id,
+      model_id,         // facultatif (ex: 'eleven_multilingual_v2' ou 'eleven_turbo_v2_5')
+      language_code,    // 'fr', 'fr-FR' → on normalise vers 'fr'
+      voice_settings,   // { stability, similarity_boost }
+      output_format,    // ex: 'mp3_22050_64', 'mp3_44100_128'
+      save_to_storage   // boolean
+    } = data;
 
-    // Appeler le SDK + logs de structure
-    const sdkResp = await client.textToSpeech.convert(voice_id, request);
-
-    // 🔎 Log structure pour comprendre ce que renvoie ta version du SDK
-    log('🔎 ElevenLabs SDK resp type:', typeof sdkResp);
-    try { log('🔎 ElevenLabs SDK keys:', Object.keys(sdkResp || {})); } catch {}
-    try {
-      log('🔎 audio typeof:', typeof sdkResp?.audio, 'isBuffer:', Buffer.isBuffer?.(sdkResp?.audio));
-      if (sdkResp?.audio && typeof sdkResp?.audio?.byteLength === 'number') {
-        log('🔎 audio.byteLength:', sdkResp.audio.byteLength);
-      }
-      if (sdkResp?.contentType) log('🔎 contentType:', sdkResp.contentType);
-    } catch {}
-
-    // Normaliser la réponse audio (tous formats)
-    let audioBase64 = null;
-    let contentType = sdkResp?.contentType || 'audio/mpeg';
-
-    // cas A: base64 string direct
-    if (typeof sdkResp?.audio === 'string') {
-      audioBase64 = sdkResp.audio;
-
-    // cas B: Buffer Node.js
-    } else if (sdkResp?.audio && Buffer.isBuffer(sdkResp.audio)) {
-      audioBase64 = sdkResp.audio.toString('base64');
-
-    // cas C: Uint8Array/ArrayBuffer-like
-    } else if (sdkResp?.audio && typeof sdkResp.audio === 'object' && typeof sdkResp.audio.byteLength === 'number') {
-      // sdkResp.audio est typé binaire (Uint8Array / ArrayBuffer)
-      const buf = Buffer.from(sdkResp.audio);
-      audioBase64 = buf.toString('base64');
-
-    // cas D: Response-like (arrayBuffer())
-    } else if (sdkResp && typeof sdkResp.arrayBuffer === 'function') {
-      const ab = await sdkResp.arrayBuffer();
-      audioBase64 = Buffer.from(ab).toString('base64');
-
-    // cas E: parfois l'audio est encapsulé dans data/audio
-    } else if (sdkResp?.data?.audio) {
-      if (typeof sdkResp.data.audio === 'string') {
-        audioBase64 = sdkResp.data.audio;
-      } else {
-        const buf = Buffer.from(sdkResp.data.audio);
-        audioBase64 = buf.toString('base64');
-      }
+    if (!text || !voice_id) {
+      return res.json({ success: false, error: "Missing 'text' or 'voice_id'" }, 400);
+    }
+    if (String(text).length > 5000) {
+      return res.json({ success: false, error: 'Text too long (max 5000 chars)' }, 400);
     }
 
-    // si toujours rien → fallback REST
-    if (!audioBase64) {
-      log('🔄 Fallback to REST API...');
-      
-      const url = `https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`;
-      const payloadRest = {
-        text,
-        model_id: modelToUse,
-        language_code: lang2 || undefined,
-        voice_settings: voice_settings || undefined,
-        output_format: output_format || 'mp3_22050_64'  // Format plus léger pour éviter troncature
-      };
-      
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'xi-api-key': process.env.ELEVENLABS_API_KEY
-        },
-        body: JSON.stringify(payloadRest)
-      });
-      
-      if (!r.ok) {
-        const t = await r.text();
-        error(`❌ Upstream ${r.status}: ${t}`);
-        return res.json({ success: false, error: 'Upstream error', status: r.status }, 502);
-      }
-      
-      const ab = await r.arrayBuffer();
-      audioBase64 = Buffer.from(ab).toString('base64');
-      contentType = 'audio/mpeg';
-      
-      // 🔒 Log pour confirmer la taille
-      log(`✅ REST OK — bytes=${ab.byteLength}, b64len=${audioBase64.length}`);
-    }
+    const lang2 = toISO639_1(language_code); // 'fr-FR' -> 'fr'
+    const modelToUse = model_id || 'eleven_multilingual_v2';
+    const formatToUse = output_format || 'mp3_22050_64'; // léger par défaut pour preview
 
-    // Réponse de base
-    const baseResponse = {
-      success: true,
-      audio: audioBase64,
-      contentType,
-      size: audioBase64 ? Buffer.from(audioBase64, 'base64').length : 0,  // ← utile côté front
-      voiceId: voice_id,
-      modelId: modelToUse
+    log(`🚀 ElevenLabs REST start`);
+    log(`📋 Request: text_len=${String(text).length}, voice=${voice_id}, lang=${lang2 || 'auto'}, model=${modelToUse}, fmt=${formatToUse}`);
+
+    // Appel REST ElevenLabs
+    const url = `${ELEVEN_TTS_URL}/${voice_id}`;
+    const payload = {
+      text,
+      model_id: modelToUse,
+      // language_code: lang2 (mettre seulement si défini)
+      ...(lang2 ? { language_code: lang2 } : {}),
+      ...(voice_settings ? { voice_settings } : {}),
+      ...(formatToUse ? { output_format: formatToUse } : {})
     };
 
-    // 🔀 Si on ne veut pas stocker → renvoie direct le base64
+    const upstream = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!upstream.ok) {
+      const bodyText = await upstream.text();
+      error(`❌ ElevenLabs ${upstream.status}: ${bodyText}`);
+      // renvoie un JSON uniforme
+      return res.json({
+        success: false,
+        error: 'Upstream error',
+        status: upstream.status,
+        details: tryParseJson(bodyText) || bodyText?.slice(0, 800)
+      }, 502);
+    }
+
+    // ElevenLabs renvoie directement l'audio binaire (selon endpoint) OU un JSON base64 sur certains endpoints.
+    // L'endpoint text-to-speech renvoie du binaire → on lit un ArrayBuffer.
+    const arrayBuf = await upstream.arrayBuffer();
+    const buf = Buffer.from(arrayBuf);
+    const size = buf.byteLength;
+
+    // Déduit un content-type raisonnable selon output_format
+    const contentType = guessContentType(formatToUse); // 'audio/mpeg' par défaut
+
+    // Mode 1: pré-écoute → renvoie base64
     if (!save_to_storage) {
-      return res.json(baseResponse, 200);
+      const b64 = buf.toString('base64');
+      return res.json({
+        success: true,
+        audio: b64,
+        contentType,
+        size
+      }, 200);
     }
 
-    // 💾 Upload dans Appwrite Storage
-    const ENDPOINT   = process.env.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
-    const PROJECT_ID = process.env.APPWRITE_PROJECT_ID || 'ankilang';
-    const API_KEY    = process.env.APPWRITE_API_KEY;              // 🔐 clé serveur obligatoire
-    const BUCKET_ID  = process.env.APPWRITE_BUCKET_ID || 'flashcard-images';
-
-    if (!API_KEY) {
-      error('Missing APPWRITE_API_KEY');
-      return res.json({ success: false, error: 'Server misconfigured' }, 500);
+    // Mode 2: upload Storage
+    if (!APPWRITE_API_KEY) {
+      error('save_to_storage=true mais APPWRITE_API_KEY manquant');
+      return res.json({ success: false, error: 'Storage not configured' }, 500);
     }
 
-    const awClient  = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID).setKey(API_KEY);
-    const storage   = new Storage(awClient);
-    const buffer    = Buffer.from(audioBase64, 'base64');
-    const filename  = `tts_${Date.now()}.mp3`;
+    const appwrite = new Client()
+      .setEndpoint(APPWRITE_ENDPOINT)
+      .setProject(APPWRITE_PROJECT_ID)
+      .setKey(APPWRITE_API_KEY);
 
-    const file = await storage.createFile(BUCKET_ID, ID.unique(), InputFile.fromBuffer(buffer, filename));
-    const fileId  = file.$id;
-    // URL "view" accessible si bucket public (sinon génère une URL signée côté front)
-    const baseUrl = ENDPOINT.replace('/v1', '');
-    const fileUrl = `${baseUrl}/storage/buckets/${BUCKET_ID}/files/${fileId}/view?project=${PROJECT_ID}`;
+    const storage = new Storage(appwrite);
+    const filename = `tts_${Date.now()}.${formatToUse.startsWith('mp3') ? 'mp3' : 'bin'}`;
+
+    const created = await storage.createFile(
+      APPWRITE_BUCKET_ID,
+      'unique()',
+      InputFile.fromBuffer(buf, filename)
+    );
+
+    // URL de lecture (si bucket public)
+    const fileId = created.$id;
+    const fileUrl = `${APPWRITE_ENDPOINT}/storage/buckets/${APPWRITE_BUCKET_ID}/files/${fileId}/view?project=${APPWRITE_PROJECT_ID}`;
 
     return res.json({
       success: true,
       fileId,
       fileUrl,
-      size: buffer.byteLength,
-      contentType
+      contentType,
+      size
     }, 200);
 
-  } catch (err) {
-    error(`❌ ElevenLabs SDK error: ${err.message}`);
-    let errMsg = err.message;
-    // Si l'erreur provient de la réponse ElevenLabs, essaie de décoder
-    try {
-      const j = JSON.parse(err.message);
-      if (j.detail && j.detail.message) {
-        errMsg = j.detail.message;
-      }
-    } catch (_) {}
-    return res.json({ success: false, error: errMsg }, 502);
+  } catch (e) {
+    context.error?.(`💥 Internal: ${e.stack || e.message}`);
+    return res.json({ success: false, error: 'Internal server error', details: e.message }, 500);
   }
 };
+
+function tryParseJson(s) {
+  try { return JSON.parse(s); } catch { return null; }
+}
+
+function guessContentType(format) {
+  // ElevenLabs: 'mp3_22050_64', 'mp3_44100_128', 'wav_44100', etc.
+  if (!format) return 'audio/mpeg';
+  const f = String(format).toLowerCase();
+  if (f.startsWith('mp3')) return 'audio/mpeg';
+  if (f.startsWith('wav')) return 'audio/wav';
+  if (f.startsWith('ogg')) return 'audio/ogg';
+  return 'audio/mpeg';
+}

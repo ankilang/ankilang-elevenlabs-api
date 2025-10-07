@@ -118,12 +118,18 @@ module.exports = async (context) => {
     // Mode 1: pré-écoute → renvoie base64
     if (!save_to_storage) {
       const b64 = buf.toString('base64');
-      return res.json({
+      log(`✅ Pré-écoute: audio base64 length=${b64.length}, size=${size} bytes`);
+      
+      const response = {
         success: true,
         audio: b64,
         contentType,
         size
-      }, 200);
+      };
+      
+      log(`📤 Response JSON: ${JSON.stringify({ success: response.success, contentType: response.contentType, size: response.size, audioLength: response.audio.length })}`);
+      
+      return res.json(response, 200);
     }
 
     // Mode 2: upload Storage
@@ -150,13 +156,19 @@ module.exports = async (context) => {
     const fileId = created.$id;
     const fileUrl = `${APPWRITE_ENDPOINT}/storage/buckets/${APPWRITE_BUCKET_ID}/files/${fileId}/view?project=${APPWRITE_PROJECT_ID}`;
 
-    return res.json({
+    log(`✅ Storage upload: fileId=${fileId}, size=${size} bytes`);
+    
+    const response = {
       success: true,
       fileId,
       fileUrl,
       contentType,
       size
-    }, 200);
+    };
+    
+    log(`📤 Response JSON: ${JSON.stringify({ success: response.success, fileId: response.fileId, contentType: response.contentType, size: response.size })}`);
+    
+    return res.json(response, 200);
 
   } catch (e) {
     context.error?.(`💥 Internal: ${e.stack || e.message}`);

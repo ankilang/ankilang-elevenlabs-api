@@ -57,7 +57,8 @@ module.exports = async (context) => {
       language_code,    // 'fr', 'fr-FR' → on normalise vers 'fr'
       voice_settings,   // { stability, similarity_boost }
       output_format,    // ex: 'mp3_22050_64', 'mp3_44100_128'
-      save_to_storage   // boolean
+      save_to_storage,  // boolean
+      speaking_rate     // facultatif, vitesse de parole (défaut: 0.8)
     } = data;
 
     if (!text || !voice_id) {
@@ -70,9 +71,12 @@ module.exports = async (context) => {
     const lang2 = toISO639_1(language_code); // 'fr-FR' -> 'fr'
     const modelToUse = model_id || 'eleven_multilingual_v2';
     const formatToUse = output_format || 'mp3_22050_64'; // léger par défaut pour preview
+    
+    // Force la vitesse de parole à 0.8x par défaut pour une meilleure compréhension
+    const RATE = Number.isFinite(speaking_rate) ? Number(speaking_rate) : 0.8;
 
     log(`🚀 ElevenLabs REST start`);
-    log(`📋 Request: text_len=${String(text).length}, voice=${voice_id}, lang=${lang2 || 'auto'}, model=${modelToUse}, fmt=${formatToUse}`);
+    log(`📋 Request: text_len=${String(text).length}, voice=${voice_id}, lang=${lang2 || 'auto'}, model=${modelToUse}, fmt=${formatToUse}, rate=${RATE}`);
 
     // Appel REST ElevenLabs
     const url = `${ELEVEN_TTS_URL}/${voice_id}`;
@@ -81,8 +85,18 @@ module.exports = async (context) => {
       model_id: modelToUse,
       // language_code: lang2 (mettre seulement si défini)
       ...(lang2 ? { language_code: lang2 } : {}),
-      ...(voice_settings ? { voice_settings } : {}),
-      ...(formatToUse ? { output_format: formatToUse } : {})
+      ...(formatToUse ? { output_format: formatToUse } : {}),
+      
+      // Configuration de la vitesse de parole pour une meilleure compréhension
+      generation_config: {
+        speaking_rate: RATE,  // 0.8x par défaut pour ralentir la parole
+      },
+      
+      // Fallback pour compatibilité avec les anciennes versions d'API
+      voice_settings: {
+        ...(voice_settings || {}),
+        speed: RATE,  // alias pour compatibilité
+      }
     };
 
     const upstream = await fetch(url, {
